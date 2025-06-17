@@ -1,0 +1,128 @@
+import lightgbm as lgb
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
+from math import sqrt
+
+
+np.random.seed(42)
+random_indices = np.random.choice(x.index, size=5, replace=False)
+x_final = x.loc[random_indices]
+y_final = y.loc[random_indices]
+
+
+x_remaining = x.drop(random_indices)
+y_remaining = y.drop(random_indices)
+
+
+x_train, x_test, y_train, y_test = train_test_split(
+    x_remaining, y_remaining, 
+    test_size=0.2,
+    random_state=42
+)
+from sklearn.multioutput import MultiOutputRegressor
+model =  MultiOutputRegressor(lgb.LGBMRegressor(
+        min_child_samples=15,
+        max_depth=6,
+        learning_rate=0.14,
+       n_estimators=200,
+        colsample_bytree=0.7,
+        subsample=0.31,
+        alpha=0.5
+))
+
+model.fit(x_train, y_train)
+
+
+y_train_pred = model.predict(x_train)
+y_test_pred = model.predict(x_test)
+
+
+
+ax.tick_params(
+             labelsize=14) 
+
+plt.xticks( fontsize=22, fontweight='bold') 
+plt.yticks(fontsize=22, fontweight='bold')
+
+def get_metrics(y_true, y_pred):
+    return {
+        'R2': metrics.r2_score(y_true, y_pred),
+        'MSE': metrics.mean_squared_error(y_true, y_pred),
+        'MAE': metrics.mean_absolute_error(y_true, y_pred),
+        'RMSE': sqrt(metrics.mean_squared_error(y_true, y_pred))
+    }
+
+test_metrics = get_metrics(y_test, y_test_pred)
+train_metrics = get_metrics(y_train, y_train_pred)
+metric_types = ['MSE', 'MAE', 'R2', 'RMSE']
+for m in metric_types:
+    print(f"{m}: Test={test_metrics[m]:.3f}, Train={train_metrics[m]:.3f}")
+final_pred = model.predict(x_final)
+print("\nFinal Predictions vs True Values:")
+results = []
+for i in range(3):
+    results.append(pd.DataFrame({
+        f'True_Target_{i+1}': y_final.iloc[:,i],
+        f'Predicted_Target_{i+1}': final_pred[:,i]
+    }).round(3))
+    A
+final_results = pd.concat(results, axis=1)
+print(final_results)
+
+
+
+# 5-fold cross-validation
+from sklearn.model_selection import cross_val_score, KFold
+import numpy as np
+r2_scores = cross_val_score(
+    MultiOutputRegressor(lgb.LGBMRegressor(
+        min_child_samples=15,
+        max_depth=6,
+        learning_rate=0.14,
+        n_estimators=200,
+        colsample_bytree=0.7,
+        subsample=0.31,
+        alpha=0.5
+    )),
+    x_remaining,
+    y_remaining,
+    cv=5,
+    scoring='r2'
+)
+
+rmse_scores = []
+kf = KFold(n_splits = 5)
+for train_index, test_index in kf.split(x_remaining):
+    x_train, x_test = x_remaining.iloc[train_index], x_remaining.iloc[test_index]
+    y_train, y_test = y_remaining.iloc[train_index], y_remaining.iloc[test_index]
+
+    model = MultiOutputRegressor(lgb.LGBMRegressor(
+        min_child_samples=15,
+        max_depth=6,
+        learning_rate=0.14,
+        n_estimators=200,
+        colsample_bytree=0.7,
+        subsample=0.31,
+        alpha=0.5
+    ))
+    model.fit(x_train, y_train)
+    y_pred = model.predict(x_test)
+    rmse = sqrt(metrics.mean_squared_error(y_test, y_pred))
+    rmse_scores.append(rmse)
+
+
+print("\n5 - fold Cross - Validation R2 scores:")
+for i, r2 in enumerate(r2_scores):
+    print(f"Fold {i + 1}: R2 = {r2:.3f}")
+print(f"Average R2: {r2_scores.mean():.3f}")
+
+
+print("\n5 - fold Cross - Validation RMSE scores:")
+for i, rmse in enumerate(rmse_scores):
+    print(f"Fold {i + 1}: RMSE = {rmse:.3f}")
+print(f"Average RMSE: {np.mean(rmse_scores):.3f}")
